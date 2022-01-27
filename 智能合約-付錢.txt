@@ -1,0 +1,21 @@
+﻿pragma solidity ^0.4.25;
+
+
+contract Game
+
+{
+    
+	string public record;
+    
+	int public money = 0;
+    
+    
+	function PlayGame() payable
+    
+	{
+        
+		money = money + 1;
+    
+	}
+
+}

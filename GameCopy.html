@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Game</title>
+    <script src="js/web3.min.js"></script>
+</head>
+<body BGCOLOR=#1C1C1C Text=#FAFAFA onload="LoadPage()">
+    <TABLE BORDER=20 ALIGN=CENTER>
+		<TR ID="Part0">
+			<TD COLSPAN=3 HEIGHT="50px" ALIGN=CENTER>
+				暱稱：<INPUT TYPE="TEXT" ID="NickName" SIZE="34" MAXLENGTH="34">
+                &emsp;★ 每次遊戲消耗 0.01 (元) &emsp;
+				<input type="button" id="pay" value="投幣">
+			</TD>
+		</TR>
+
+		<TR ID="Part1">
+			<TD COLSPAN=3 ALIGN=CENTER>
+				<H1><遊戲規則></H1>
+				<p>======================================================================================</p>
+				<p ALIGN=LEFT>1. 玩家與莊家互擲骰子進行比大小。</p>
+				<p ALIGN=LEFT>2. 骰子總共有10個面 (每次可能骰出 1 ~ 10 點)。</p>
+				<p ALIGN=LEFT>3. 可以多次擲骰累積點數，當點數超過 21 點則為輸家。</p>
+				<p ALIGN=LEFT>4. 玩家與莊家點數相同時『莊家』勝。</p>
+				<p>======================================================================================</p>
+			</TD>
+		</TR>
+		
+		<TR HEIGHT=150 WIDTH=300 ID="Part2">
+			<TD ALIGN=CENTER>
+				<font size="7" ID="Player_num1"><b>0</b></font><p></p><br>
+				<font size="3">玩家點數：</font> 
+				<font size="3" ID="Player_num2">0</font>
+			</TD>
+			<TD ALIGN=CENTER ROWSPAN=2>
+				<font size="7" ID="GameState1"><b> ← </b></font><br>
+				<font size="3" ID="GameState2"><b>玩家回合</b></font><br>
+			</TD>
+			<TD ALIGN=CENTER>
+				<font size="7" ID="Bank_num1"><b>0</b></font><p></p><br>
+				<font size="3">莊家點數：</font> 
+				<font size="3" ID="Bank_num2">0</font>
+			</TD>
+		</TR>
+
+		<TR HEIGHT=50  ID="Part3">
+			<TD ALIGN=CENTER WIDTH="285px"> <button onclick="Player_ControlFun()" ID="PlayerBTN1">擲骰子</button> <button onclick="Finish()" ID="PlayerBTN2">結束</button> </TD>
+		
+			<TD ALIGN=CENTER WIDTH="285px"> <font ID="BankState">莊家擲骰中...</font> </TD>
+		</TR>
+	</TABLE>
+
+	<div ALIGN=CENTER ID="Replay">
+        <button onclick="Log_Load()" style="height:50px;width:200px"><font size="3">開始新局(紀錄戰績)</font></button>
+		<button onclick="LoadPage()" style="height:50px;width:200px"><font size="3">開始新局(不紀錄)</font></button>
+    </div>
+    
+    <front id='msgTxt1'></front><br>
+    <front id='msgTxt2'></front><br>
+    <front id='msgTxt3'></front><br>
+    <front id='msgTxt4'></front><br>
+    <front id='msgTxt5'></front><br>
+    <front id='msgTxt6'></front><br>
+    <front id='msgTxt7'></front><br>
+    <front id='msgTxt8'></front><br>
+    <front id='msgTxt9'></front><br>
+    <front id='msgTxt10'></front><br>
+    
+
+    <script>
+        //var web3 = new Web3(window.web3.currentProvider);
+        
+        web3 = new Web3(window.ethereum)
+             window.ethereum.enable().catch(error => {
+             // User denied account access
+             console.log(error)
+        });
+        
+        var Contract;
+        var abi = [
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "PlayGame",
+		"outputs": [],
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"name": "_massage",
+				"type": "string"
+			},
+			{
+				"name": "_time",
+				"type": "string"
+			}
+		],
+		"name": "SetPosMsg",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "_id",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"name": "_message",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"name": "_time",
+				"type": "string"
+			}
+		],
+		"name": "NewMessage",
+		"type": "event"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "GetMsgLength",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "index",
+				"type": "uint256"
+			}
+		],
+		"name": "GetPosMsg",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"name": "",
+				"type": "string"
+			},
+			{
+				"name": "",
+				"type": "string"
+			},
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "money",
+		"outputs": [
+			{
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "pastMsgs",
+		"outputs": [
+			{
+				"name": "_id",
+				"type": "uint256"
+			},
+			{
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"name": "_massage",
+				"type": "string"
+			},
+			{
+				"name": "_time",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+        var address = '0x58bAb3D3980d1454CFcb25Da2BF3ab016fA3B574';
+        
+        
+        var count = 0;
+
+        async function GetLength(){    
+            console.log('000');   
+            Contract = await new web3.eth.Contract(abi,address);
+            Contract.methods.GetMsgLength().call()
+            .then(function(data){
+                count = data;
+                console.log(count);
+                ShowMessage();
+            })
+        }
+
+        GetLength();
+
+        async function ShowMessage(){
+            var temp1, temp2, temp3, temp4, tempA;
+            for(i=0; i<count; i++)
+            {
+                console.log('ShowMessage');
+                Contract.methods.GetPosMsg(i).call()
+                .then(function(data){
+                    temp1 = data[0];
+                    temp2 = data[1];
+                    temp3 = data[2];
+                    temp4 = data[3];
+                    tempA = "#" + temp1 + " " + " [ " + temp2 + " ] " + " " + " [ " + temp4 + " ] " + " " + " [ " + temp3 + " ] ";
+                    PrintMessage(tempA);
+                    console.log(data);
+                }) 
+            }
+        }
+
+        async function send(_name, _whowin){
+            var accounts = await web3.eth.getAccounts();
+            var str_name = _name;//document.getElementById('editMessage').value;
+            var str_msg;
+            var str_time = Now_Time();
+           
+            if(_whowin==1)
+                str_msg = "Win";
+            else if(_whowin==2)
+                str_msg = "Lose";
+
+            Contract.methods.SetPosMsg(str_name, str_msg, str_time)
+            .send({from:accounts[0]})
+            .then(function(data){
+                console.log(data);
+                LoadPage();
+            })
+        }
+
+        async function pay(){
+            var accounts = await web3.eth.getAccounts();
+            //document.getElementById('donate').value;
+            var str = '0.01';
+            Contract.methods.PlayGame()
+            .send({from:accounts[0], value:web3.utils.toWei(str,"ether")})
+            .then(function(data){
+                console.log(data);
+                SetGame();
+            })
+        
+        }
+
+        //document.getElementById('send').addEventListener('click',send);
+        document.getElementById('pay').addEventListener('click',pay);
+
+
+    </script>
+
+<script type="text/javascript">
+    window.onload = LoadPage;  //一開網頁就執行 LoadPage() 函式
+
+    var PlayerPoint=0;   //玩家點數
+    var BankPoint = 0;   //莊家點數
+    var tempPoint = 0;  
+    var whoTurn = true;  //目前是誰的回合 true = player, false = bank
+    var whoWin = 0;
+
+    var name;
+    
+    function LoadPage()
+    {
+        Show_UI('Part0');
+        Hide_UI('BankState');
+        Hide_UI('Part1');
+        Hide_UI('Part2');
+        Hide_UI('Part3');
+        Hide_UI('Replay');
+    }
+
+    function Log_Load()
+    {
+        send(name, whoWin);
+    }
+
+    function SetGame()
+    {
+        PlayerPoint = 0;
+        BankPoint = 0;
+        tempPoint = 0;
+        whoTurn = true;
+        whoWin = 0; //1:player Win, 2:Bank Win;
+
+        name = document.getElementById('NickName').value;
+        console.log(name);
+
+        Hide_UI('Part0');
+        Show_UI('Part1');
+        Show_UI('Part2');
+        Show_UI('Part3');
+        document.getElementById('Player_num1').innerHTML=0;
+        document.getElementById('Player_num2').innerHTML=PlayerPoint;
+
+        document.getElementById('Bank_num1').innerHTML=0;
+        document.getElementById('Bank_num2').innerHTML=BankPoint;
+
+        Game_State(0);
+    }
+
+    function Player_ControlFun()
+    {
+        Hide_UI('PlayerBTN1');
+        Hide_UI('PlayerBTN2');
+        GetDice('Player_num1');
+        var t1 = setTimeout(function(){TotalPoint('Player_num2');}, 1200);
+    }
+
+    function Bank_ControlFun()
+    {
+        Show_UI('BankState');
+        GetDice('Bank_num1');
+        var t1 = setTimeout(function(){TotalPoint('Bank_num2');}, 1000);
+        var t2 = setTimeout(function(){Hide_UI('BankState');}, 1500);
+        var t3 = setTimeout(function(){Bank_Decide(BankPoint);}, 2000);
+    }
+
+    function Bank_Decide(totals)
+    {
+        var choose = ((21 - totals) / 21.0) * 100;
+        var rate = Math.floor(Math.random()*1000000000) % 100 + 1 ;  //rand() % 100 + 1;
+        var total = Number(totals);
+
+        if (total < 12)
+            choose += 50;
+        else if (total < 14)
+            choose += 40;
+        else if (total < 15)
+            choose += 20;
+        else if (total < 17)
+            choose += 8;
+
+        
+        if (rate < choose)
+            var t3 = setTimeout(function(){Bank_ControlFun();}, 1000);
+        else
+            var t4 = setTimeout(function(){Finish();}, 2000);
+    }
+
+    //======================================================================== (骰子相關 -- 開始)
+    function GetDice(name)
+    {
+        tempPoint = RandomDice();
+        document.getElementById(name).innerHTML=tempPoint;
+    }
+
+    function RandomDice()
+    {
+        var x = Math.floor(Math.random()*10 + 1);
+        return x;
+    }
+
+    function TotalPoint(name)
+    {
+        if(whoTurn == true)
+        {
+            PlayerPoint+=tempPoint;
+            document.getElementById(name).innerHTML=PlayerPoint;
+        }				
+        else
+        {
+            BankPoint+=tempPoint;
+            document.getElementById(name).innerHTML=BankPoint;
+        }
+        setTimeout(function(){Check();}, 100);
+    }
+
+    function Check()  //檢查點數是否超過21
+    {
+        if(whoTurn == true & PlayerPoint>21)
+        {
+            Hide_UI('PlayerBTN1');
+            Hide_UI('PlayerBTN2');
+            Game_State(3);
+        }else if(whoTurn == true & PlayerPoint<=21)
+        {
+            var t2 = setTimeout(function(){Show_UI('PlayerBTN1');}, 1500);
+            var t3 = setTimeout(function(){Show_UI('PlayerBTN2');}, 1500);
+        }
+        else if(whoTurn == false & BankPoint>21)
+        {
+            Game_State(2);
+        }
+    }
+
+    function Finish()  //玩家或莊家不打算繼續擲骰子
+    {
+        if(whoTurn == true)
+        {	
+            Hide_UI('PlayerBTN1');
+            Hide_UI('PlayerBTN2');
+            tempPoint = 0;
+            whoTurn = false;
+                            
+            Game_State(1); //更改中間的字
+            setTimeout(function(){Bank_ControlFun();}, 2000);
+        }
+        else
+        {
+            //結算
+            Hide_UI('BankState');
+            if(PlayerPoint <= BankPoint)
+            {
+                Game_State(3);
+            }
+            else
+            {
+                Game_State(2);
+            }
+        }
+    }
+    //======================================================================== (骰子相關 -- 結束)
+    
+
+    //======================================================================== (UI相關 -- 開始)
+    function Hide_UI(name) //顯示IU
+    {
+        document.getElementById(name).style.visibility="hidden";
+    }
+
+    function Show_UI(name) //隱藏IU
+    {
+        document.getElementById(name).style.visibility="visible";
+    }
+
+    function Game_State(num)
+    {
+        if(num==0)
+        {
+            Show_UI('PlayerBTN1');
+            Show_UI('PlayerBTN2');
+            document.getElementById('GameState1').innerHTML='←';
+            document.getElementById('GameState2').innerHTML='玩家回合';
+        }
+        else if(num==1)
+        {
+            document.getElementById('GameState1').innerHTML='→';
+            document.getElementById('GameState2').innerHTML='莊家回合';
+        }
+        else if(num==2)
+        {
+            document.getElementById('GameState1').innerHTML='!';
+            document.getElementById('GameState2').innerHTML='玩家勝';
+            whoWin = 1;
+            //重新開始
+            Show_UI('Replay');
+        }
+        else if(num==3)
+        {
+            document.getElementById('GameState1').innerHTML='!';
+            document.getElementById('GameState2').innerHTML='莊家勝';
+            whoWin = 2;
+            //重新開始
+            Show_UI('Replay');
+        }
+    }
+
+    var num=1;
+        function PrintMessage(str)
+        {
+            if(num > 10 )
+            {
+                num=1;
+            }else
+            {
+                document.getElementById('msgTxt'+num).textContent = str;
+                num++;
+            }
+        }
+
+        function Now_Time(){ 
+            var date = new Date();  //建立物件  
+            var y = date.getFullYear();     //獲取年份  
+            var m =date.getMonth()+1;   //獲取月份  返回0-11  
+            var d = date.getDate(); // 獲取日  
+            var w = date.getDay();   //獲取星期幾  返回0-6   (0=星期天) 
+            var h = date.getHours();  //時
+            var minute = date.getMinutes()  //分
+            var s = date.getSeconds(); //秒
+            var sss = date.getMilliseconds() ; //毫秒
+            if(m<10){
+                m = "0"+m;
+            }
+            if(d<10){
+                d = "0"+d;
+            }
+            if(h<10){
+                h = "0"+h;
+            }
+            if(minute<10){
+                minute = "0"+minute;
+            }
+
+            if(s<10){
+                s = "0"+s;
+            }
+            if(sss<10){
+                sss = "00"+sss;
+            }else if(sss<100){
+                sss = "0"+sss;
+            }
+            //document.write(y+"-"+m+"-"+d+"   "+h+":"+minute+":"+s);  
+            var str =  y+"-"+m+"-"+d+"   "+h+":"+minute+":"+s+"."+sss;
+            return str;
+        }
+    //======================================================================== (UI相關 -- 結束)
+</script>
+</body>
+</html>
